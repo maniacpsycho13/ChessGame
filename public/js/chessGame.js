@@ -172,6 +172,20 @@ io.on("connection", (socket) => {
     }
   });
 });
+
+
+let adjustedTime = Date.now(); // Will be updated by Berkeley sync
+
+// Step 1: Respond to server's time request
+socket.on("time_request", () => {
+  socket.emit("time_response", Date.now());
+});
+
+// Step 2: Apply the adjustment server sends back
+socket.on("time_adjust", (adjustment) => {
+  adjustedTime = Date.now() + adjustment;
+  console.log("Berkeley sync done. Adjusted time:", adjustedTime);
+});
 .............................................
 
 // New function to create moves table HTML
