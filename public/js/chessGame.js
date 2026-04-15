@@ -225,3 +225,63 @@ renderBoard();
 window.addEventListener('DOMContentLoaded', () => {
   createMovesTable();
 });
+
+
+
+const showGameStatus = (message) => {
+  const statusDiv = document.createElement("div");
+  statusDiv.id = "game-over-overlay";
+  statusDiv.innerHTML = `
+    <div style="
+      position: fixed; top: 50%; left: 50%; 
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.85); color: white;
+      padding: 30px; border-radius: 15px; text-align: center;
+      z-index: 1000; font-family: sans-serif;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    ">
+      <h2 style="margin: 0 0 10px 0;">Game Over</h2>
+      <p style="font-size: 1.2rem;">${message}</p>
+      <button onclick="location.reload()" style="
+        margin-top: 15px; padding: 10px 20px; 
+        cursor: pointer; border: none; border-radius: 5px;
+        background: #4CAF50; color: white; font-weight: bold;
+      ">Play Again</button>
+    </div>
+  `;
+  document.body.appendChild(statusDiv);
+};
+
+
+socket.on("move", (move) => {
+  addMoveToHistory(move);
+  chess.move(move);
+  renderBoard();
+
+  // --- CHECK FOR WIN/LOSS/DRAW ---
+  if (chess.isGameOver()) {
+    let message = "";
+    
+    if (chess.isCheckmate()) {
+      // If it's checkmate, the person whose turn it IS lost.
+      // So if chess.turn() is 'w', Black won.
+      const winner = chess.turn() === "w" ? "Black" : "White";
+      
+      if ((playerRole === "w" && winner === "White") || (playerRole === "b" && winner === "Black")) {
+        message = "🏆 Congratulations! You Won!";
+      } else if (playerRole === null) {
+        message = `${winner} wins by Checkmate!`;
+      } else {
+        message = "💀 Checkmate! You Lost.";
+      }
+    } else if (chess.isDraw()) {
+      message = "🤝 Game Over - It's a Draw!";
+    } else if (chess.isStalemate()) {
+      message = "⌛ Game Over - Stalemate!";
+    } else {
+      message = "Game Over!";
+    }
+
+    showGameStatus(message);
+  }
+});
