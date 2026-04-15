@@ -84,98 +84,123 @@ const getPieceUnicode = (piece) => {
   return unicodePieces[piece.type] || "";
 };
 
-// ✅ NEW: Show game over overlay message
+// ── Show game over overlay ──────────────────────────────────────────────────
 const showGameOverMessage = (message) => {
-  // Remove any existing overlay
   const existing = document.getElementById("game-over-overlay");
   if (existing) existing.remove();
 
   const overlay = document.createElement("div");
   overlay.id = "game-over-overlay";
+
   overlay.style.cssText = `
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
   `;
 
   overlay.innerHTML = `
     <div style="
-      background: white;
-      border-radius: 12px;
-      padding: 40px 50px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 48px 56px;
       text-align: center;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
       font-family: Arial, sans-serif;
+      max-width: 400px;
+      width: 90%;
     ">
-      <div style="font-size: 56px; margin-bottom: 10px;">♟️</div>
-      <h2 style="font-size: 28px; margin: 0 0 10px; color: #222;">Game Over</h2>
-      <p style="font-size: 20px; color: #444; margin: 0 0 24px;">${message}</p>
-      <button onclick="document.getElementById('game-over-overlay').remove()" style="
-        padding: 10px 28px;
-        font-size: 16px;
-        background: #333;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-      ">Close</button>
+      <div style="font-size: 64px; margin-bottom: 12px;">♟️</div>
+      <h2 style="font-size: 30px; margin: 0 0 12px; color: #111; font-weight: bold;">Game Over</h2>
+      <p style="font-size: 20px; color: #444; margin: 0 0 28px; line-height: 1.4;">${message}</p>
+      <button
+        onclick="document.getElementById('game-over-overlay').remove()"
+        style="
+          padding: 12px 36px;
+          font-size: 16px;
+          background: #222;
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: bold;
+          letter-spacing: 0.5px;
+        "
+        onmouseover="this.style.background='#444'"
+        onmouseout="this.style.background='#222'"
+      >Close</button>
     </div>
+    <style>
+      @keyframes popIn {
+        from { transform: scale(0.8); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+      }
+    </style>
   `;
 
   document.body.appendChild(overlay);
+  console.log("✅ Game over overlay shown:", message);
 };
 
-// ✅ NEW: Check game state after every move
+// ── Check game state after every move ──────────────────────────────────────
 const checkGameOver = () => {
-  if (chess.isCheckmate()) {
+  const inCheckmate    = chess.isCheckmate?.()            ?? chess.in_checkmate?.();
+  const inDraw         = chess.isDraw?.()                 ?? chess.in_draw?.();
+  const inStalemate    = chess.isStalemate?.()            ?? chess.in_stalemate?.();
+  const inThreefold    = chess.isThreefoldRepetition?.()  ?? chess.in_threefold_repetition?.();
+  const inInsufficient = chess.isInsufficientMaterial?.() ?? chess.insufficient_material?.();
+
+  console.log("🔍 Game over check:", { inCheckmate, inDraw, inStalemate });
+
+  if (inCheckmate) {
     const winner = chess.turn() === "w" ? "Black" : "White";
     showGameOverMessage(`🏆 ${winner} wins by Checkmate!`);
-  } else if (chess.isDraw()) {
-    if (chess.isStalemate()) {
-      showGameOverMessage("🤝 Draw by Stalemate!");
-    } else if (chess.isThreefoldRepetition()) {
-      showGameOverMessage("🤝 Draw by Threefold Repetition!");
-    } else if (chess.isInsufficientMaterial()) {
-      showGameOverMessage("🤝 Draw by Insufficient Material!");
-    } else {
-      showGameOverMessage("🤝 The game is a Draw!");
-    }
+  } else if (inStalemate) {
+    showGameOverMessage("🤝 Draw by Stalemate!");
+  } else if (inThreefold) {
+    showGameOverMessage("🤝 Draw by Threefold Repetition!");
+  } else if (inInsufficient) {
+    showGameOverMessage("🤝 Draw by Insufficient Material!");
+  } else if (inDraw) {
+    showGameOverMessage("🤝 The game is a Draw!");
   }
 };
 
+// ── Move history ────────────────────────────────────────────────────────────
 const addMoveToHistory = (move) => {
   const moveObj = chess.get(move.to);
-  const isPawnMove = moveObj && moveObj.type === 'p';
-  
+  const isPawnMove = moveObj && moveObj.type === "p";
+
   moveHistory.push({
     moveNumber: Math.ceil(moveHistory.length / 2) + 1,
-    player: chess.turn() === 'w' ? 'Black' : 'White',
-    piece: moveObj ? getPieceUnicode(moveObj) : '',
+    player: chess.turn() === "w" ? "Black" : "White",
+    piece: moveObj ? getPieceUnicode(moveObj) : "",
     from: move.from,
     to: move.to,
     notation: move.san || `${move.from}-${move.to}`,
     isPawn: isPawnMove,
-    timestamp: new Date().toLocaleTimeString()
+    timestamp: new Date().toLocaleTimeString(),
   });
-  
+
   updateMovesTable();
 };
 
 const updateMovesTable = () => {
   const tableBody = document.querySelector("#moves-table tbody");
   if (!tableBody) return;
-  
+
   tableBody.innerHTML = "";
-  
+
   moveHistory.forEach((move, index) => {
     const row = document.createElement("tr");
     if (move.isPawn) row.classList.add("pawn-move");
-    
+
     row.innerHTML = `
       <td>${Math.floor(index / 2) + 1}</td>
       <td>${move.player}</td>
@@ -185,10 +210,10 @@ const updateMovesTable = () => {
       <td>${move.notation}</td>
       <td>${move.timestamp}</td>
     `;
-    
+
     tableBody.appendChild(row);
   });
-  
+
   const movesContainer = document.querySelector("#moves-container");
   if (movesContainer) movesContainer.scrollTop = movesContainer.scrollHeight;
 };
@@ -197,7 +222,7 @@ const createMovesTable = () => {
   const tableHTML = `
     <div id="moves-container" style="
       position: absolute;
-      top: 620px; 
+      top: 620px;
       left: 50%;
       transform: translateX(-50%);
       width: 400px;
@@ -233,11 +258,11 @@ const createMovesTable = () => {
     </style>
   `;
 
-  const chessboard = document.querySelector('.chessboard');
-  chessboard.insertAdjacentHTML('afterend', tableHTML);
+  const chessboard = document.querySelector(".chessboard");
+  chessboard.insertAdjacentHTML("afterend", tableHTML);
 };
 
-// Socket event handlers
+// ── Socket event handlers ───────────────────────────────────────────────────
 socket.on("playerRole", (role) => {
   playerRole = role;
   renderBoard();
@@ -257,11 +282,12 @@ socket.on("move", (move) => {
   addMoveToHistory(move);
   chess.move(move);
   renderBoard();
-  checkGameOver(); // ✅ Check for game over after every move
+  setTimeout(() => checkGameOver(), 100); // ✅ slight delay ensures state is settled
 });
 
+// ── Init ────────────────────────────────────────────────────────────────────
 renderBoard();
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener("DOMContentLoaded", () => {
   createMovesTable();
 });
