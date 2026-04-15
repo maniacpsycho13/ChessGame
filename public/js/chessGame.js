@@ -136,6 +136,44 @@ const updateMovesTable = () => {
   }
 };
 
+
+
+
+...........................
+// Berkeley Algorithm
+let clientTimes = {};
+let connectedSockets = [];
+
+io.on("connection", (socket) => {
+  connectedSockets.push(socket);
+
+  // Ask this client for their time
+  socket.emit("time_request");
+
+  socket.on("time_response", (clientTime) => {
+    clientTimes[socket.id] = clientTime;
+
+    // Once we have time from all connected clients
+    if (Object.keys(clientTimes).length === connectedSockets.length) {
+      
+      // Step 1: Calculate average
+      const serverTime = Date.now();
+      const allTimes = [serverTime, ...Object.values(clientTimes)];
+      const average = allTimes.reduce((a, b) => a + b) / allTimes.length;
+
+      // Step 2: Send each client their adjustment
+      connectedSockets.forEach((s) => {
+        const adjustment = average - clientTimes[s.id];
+        s.emit("time_adjust", adjustment);
+      });
+
+      // Reset for next sync
+      clientTimes = {};
+    }
+  });
+});
+.............................................
+
 // New function to create moves table HTML
 const createMovesTable = () => {
   const tableHTML = `
